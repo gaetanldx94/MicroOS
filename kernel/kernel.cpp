@@ -7,6 +7,8 @@
 #include "file.h"
 #include "string_utils.h"
 
+Directory root_directory = {.file_count = 0};
+
 // Déclaration de itoa
 void itoa(int num, char *buffer);
 
@@ -19,7 +21,154 @@ int cursor_y = 0;
 // Déclarations externes
 extern "C" void init_process_manager();
 extern "C" void context_switch();
-extern "C" void process_entry(uint32_t pid, const char *process_name); // Assurez-vous que cette fonction est définie
+extern "C" void process_entry(uint32_t pid, const char *process_name);
+
+void read_command(char *buffer, size_t size);
+void execute_command(const char *command);
+void list_files();
+
+extern "C" void kernel_printf(const char *format, ...);
+extern "C" uint8_t inb(uint16_t port);
+
+char get_char();
+
+void shell()
+{
+	char command[256];
+
+	while (true)
+	{
+		kernel_printf("MicroOS> ");
+		read_command(command, sizeof(command));
+		execute_command(command);
+	}
+}
+
+bool key_pressed[256] = {false}; // Tableau pour suivre l'état des touches
+
+char get_char() {
+    uint8_t scancode = inb(0x60);
+
+    // Vérifie si c'est un scancode de relâchement
+    if (scancode & 0x80) {
+        key_pressed[scancode & 0x7F] = false; // Marque la touche comme non enfoncée
+        return '\0'; // Retourne un caractère nul
+    }
+
+    // Si la touche est déjà enfoncée, ignorer
+    if (key_pressed[scancode]) {
+        return '\0'; // Ignore les pressions répétées
+    }
+
+    key_pressed[scancode] = true;
+
+    // Mappage des touches pour un clavier AZERTY
+    switch (scancode) {
+    case 0x10: return 'a'; // A
+    case 0x11: return 'z'; // Z
+    case 0x12: return 'e'; // E
+    case 0x13: return 'r'; // R
+    case 0x14: return 't'; // T
+    case 0x15: return 'y'; // Y
+    case 0x16: return 'u'; // U
+    case 0x17: return 'i'; // I
+    case 0x18: return 'o'; // O
+    case 0x19: return 'p'; // P
+    case 0x1E: return 'q'; // Q
+    case 0x1F: return 's'; // S
+    case 0x20: return 'd'; // D
+    case 0x21: return 'f'; // F
+    case 0x22: return 'g'; // G
+    case 0x23: return 'h'; // H
+    case 0x24: return 'j'; // J
+    case 0x25: return 'k'; // K
+    case 0x26: return 'l'; // L
+    case 0x27: return 'm'; // M
+
+    // Ajout des caractères de W à N
+    case 0x2C: return 'w'; // W
+    case 0x2D: return 'x'; // X
+    case 0x2E: return 'c'; // C
+    case 0x2F: return 'v'; // V
+	case 0x30: return 'b'; // B
+	case 0x31: return 'n'; // B
+
+    case 0x39: return ' ';  // Espace
+    case 0x1C: return '\n'; // Entrée
+
+    // Ajoute d'autres caractères si nécessaire
+    default: return '\0'; // Retourne un caractère nul si non reconnu
+}
+
+
+
+
+}
+
+void read_command(char *buffer, size_t size) {
+    size_t i = 0;
+    char c;
+
+    while (i < size - 1) {
+        c = get_char(); // Obtenir un caractère
+
+        // Ignore les caractères nuls
+        if (c == '\0') {
+            continue; // Ne fais rien si c'est un caractère nul
+        }
+
+        if (c == '\n') {
+            break; // Fin de ligne
+        }
+
+        buffer[i] = c; // Ajoute le caractère au buffer
+        kernel_printf("%c", c); // Affiche le caractère
+
+        i++; // Incrémente l'index après avoir ajouté le caractère
+    }
+    buffer[i] = '\0'; // Terminateur nul
+}
+
+void parse_cat_command(const char *command, char *filename)
+{
+	const char *start = command + 4; // Ignorer "cat "
+	while (*start != '\0' && *start != ' ')
+	{
+		*filename++ = *start++;
+	}
+	*filename = '\0'; // Terminer la chaîne
+}
+
+void execute_command(const char *command)
+{
+	if (my_strcmp(command, "exit") == 0)
+	{
+		kernel_printf("Sortie du shell.\n");
+		// Logique pour quitter ou redémarrer
+	}
+	else if (my_strncmp(command, "ls", 2) == 0)
+	{
+		list_files();
+	}
+	else if (my_strncmp(command, "cat", 3) == 0)
+	{
+		char filename[256];
+		parse_cat_command(command, filename);
+		display_file_content(root_directory, filename);
+	}
+	else
+	{
+		kernel_printf("\nCommande non reconnue : %s\n", command);
+	}
+}
+
+void list_files()
+{
+	for (size_t i = 0; i < root_directory.file_count; i++)
+	{
+		kernel_printf("\n%s\n", root_directory.files[i].name);
+	}
+}
 
 extern "C" void outb(uint16_t port, uint8_t value)
 {
@@ -49,52 +198,49 @@ void clear_screen()
 	move_cursor();
 }
 
-extern "C" void kernel_printf(const char *format, ...)
-{
-	char buffer[256]; // Un buffer temporaire
-	va_list args;
-	va_start(args, format);
-	my_snprintf(buffer, sizeof(buffer), format, args);
-	va_end(args);
+extern "C" void kernel_printf(const char *format, ...) {
+    char buffer[256];
+    va_list args;
+    va_start(args, format);
 
-	// Maintenant, écris dans la mémoire vidéo
-	for (int i = 0; buffer[i] != '\0'; ++i)
-	{
-		char c = buffer[i];
-		if (c == '\n')
-		{
-			cursor_x = 0;
-			cursor_y++;
-		}
-		else
-		{
-			VideoMemory[cursor_y * VGA_WIDTH + cursor_x] = (VideoMemory[cursor_y * VGA_WIDTH + cursor_x] & 0xFF00) | c;
-			cursor_x++;
-			if (cursor_x >= VGA_WIDTH)
-			{
-				cursor_x = 0;
-				cursor_y++;
-			}
-		}
+    // Formater le texte
+    my_snprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
 
-		if (cursor_y >= VGA_HEIGHT)
-		{
-			for (int y = 0; y < VGA_HEIGHT - 1; y++)
-			{
-				for (int x = 0; x < VGA_WIDTH; x++)
-				{
-					VideoMemory[y * VGA_WIDTH + x] = VideoMemory[(y + 1) * VGA_WIDTH + x];
-				}
-			}
-			cursor_y = VGA_HEIGHT - 1;
-			for (int x = 0; x < VGA_WIDTH; x++)
-			{
-				VideoMemory[cursor_y * VGA_WIDTH + x] = (VideoMemory[cursor_y * VGA_WIDTH + x] & 0xFF00) | ' ';
-			}
-		}
-	}
-	move_cursor();
+    // Écrire chaque caractère dans la mémoire vidéo
+    for (int i = 0; buffer[i] != '\0'; ++i) {
+        char c = buffer[i];
+        if (c == '\n') {
+            cursor_x = 0;
+            cursor_y++;
+        } else {
+            // Écrire le caractère dans la mémoire vidéo
+            VideoMemory[cursor_y * VGA_WIDTH + cursor_x] = (VideoMemory[cursor_y * VGA_WIDTH + cursor_x] & 0xFF00) | c;
+            cursor_x++;
+            if (cursor_x >= VGA_WIDTH) {
+                cursor_x = 0;
+                cursor_y++;
+            }
+        }
+
+        if (cursor_y >= VGA_HEIGHT) {
+            // Gérer le défilement
+            for (int y = 0; y < VGA_HEIGHT - 1; y++) {
+                for (int x = 0; x < VGA_WIDTH; x++) {
+                    VideoMemory[y * VGA_WIDTH + x] = VideoMemory[(y + 1) * VGA_WIDTH + x];
+                }
+            }
+            cursor_y = VGA_HEIGHT - 1;
+            for (int x = 0; x < VGA_WIDTH; x++) {
+                VideoMemory[cursor_y * VGA_WIDTH + x] = (VideoMemory[cursor_y * VGA_WIDTH + x] & 0xFF00) | ' ';
+            }
+        }
+    }
+
+    move_cursor(); // Mettre à jour le curseur après l'écriture
 }
+
+
 
 void kernel_printf_int(int value)
 {
@@ -280,10 +426,8 @@ extern "C" void kernelMain(void *multiboot_structure, uint32_t magicnumber)
 		kernel_printf("Erreur: impossible de creer le processus.\n");
 	}
 
-	Directory root_directory = {.file_count = 0}; // Les fichiers seront initialisés par défaut
-
 	// Créer un fichier avec du contenu
-	if (create_file(root_directory, "mon_fichier.txt", "Ceci est un test de fichier."))
+	if (create_file(root_directory, "monfichier", "Ceci est un test de fichier."))
 	{
 		kernel_printf("\nFichier cree avec succes.\n");
 	}
@@ -293,7 +437,11 @@ extern "C" void kernelMain(void *multiboot_structure, uint32_t magicnumber)
 	}
 
 	// Afficher le contenu du fichier
-	display_file_content(root_directory, "mon_fichier.txt");
+	display_file_content(root_directory, "monfichier");
+
+	kernel_printf("\n");
+
+	shell();
 
 	while (1)
 	{

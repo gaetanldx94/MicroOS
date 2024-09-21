@@ -29,7 +29,7 @@ void display_file_content(const Directory &dir, const char *filename)
 		if (my_strcmp(dir.files[i].name, filename) == 0)
 		{
 			file_found = true;
-			kernel_printf("Contenu de %s :\n%s\n", filename, dir.files[i].content);
+			kernel_printf("\nContenu de %s :\n%s\n", filename, dir.files[i].content);
 
 			break;
 		}
@@ -37,6 +37,6 @@ void display_file_content(const Directory &dir, const char *filename)
 
 	if (!file_found)
 	{
-		kernel_printf("Fichier %s non trouvé.\n", filename);
+		kernel_printf("\nFichier %s non trouve.\n", filename);
 	}
 }

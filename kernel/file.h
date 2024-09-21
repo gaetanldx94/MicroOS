@@ -18,6 +18,10 @@ struct Directory
 	File files[MAX_FILES];
 };
 
+// Déclaration externe de root_directory
+extern Directory root_directory;
+
+// Déclarations de fonctions
 bool create_file(Directory &dir, const char *filename, const char *content);
 void display_file_content(const Directory &dir, const char *filename);
 

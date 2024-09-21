@@ -30,31 +30,40 @@ int my_strcmp(const char *str1, const char *str2)
 	return *(unsigned char *)str1 - *(unsigned char *)str2;
 }
 
-void my_snprintf(char *buffer, size_t size, const char *format, va_list args)
+int my_strncmp(const char *str1, const char *str2, size_t n)
 {
-	size_t written = 0;
-	for (const char *p = format; *p && written < size - 1; p++)
+	while (n && (*str1 || *str2))
 	{
-		if (*p == '%')
+		if (*str1 != *str2)
 		{
-			p++; // Passe au caractère suivant
-			if (*p == 's')
-			{
-				const char *str = va_arg(args, const char *);
-				while (*str && written < size - 1)
-				{
-					buffer[written++] = *str++;
-				}
-			}
-			else
-			{
-				buffer[written++] = *p; // Ajoute le caractère de format
-			}
+			return (unsigned char)(*str1) - (unsigned char)(*str2);
 		}
-		else
-		{
-			buffer[written++] = *p; // Ajoute le caractère normal
-		}
+		str1++;
+		str2++;
+		n--;
 	}
-	buffer[written] = '\0'; // Assurez-vous que le buffer est null-terminé
+	return 0;
+}
+
+void my_snprintf(char *buffer, size_t size, const char *format, va_list args) {
+    size_t written = 0;
+    for (const char *p = format; *p && written < size - 1; p++) {
+        if (*p == '%') {
+            p++; // Passe au caractère suivant
+            if (*p == 's') {
+                const char *str = va_arg(args, const char *);
+                while (*str && written < size - 1) {
+                    buffer[written++] = *str++;
+                }
+            } else if (*p == 'c') {
+                char c = (char)va_arg(args, int); // %c attend un int
+                buffer[written++] = c;
+            } else {
+                buffer[written++] = *p; // Ajoute le caractère de format
+            }
+        } else {
+            buffer[written++] = *p; // Ajoute le caractère normal
+        }
+    }
+    buffer[written] = '\0'; // Assurez-vous que le buffer est null-terminé
 }
