@@ -5,7 +5,7 @@
 
 ## Description
 
-MicroOS est un système d'exploitation minimaliste conçu pour l'apprentissage et l'expérimentation avec les concepts fondamentaux des systèmes d'exploitation. Ce projet vise à fournir une base solide pour explorer la gestion des processus, la gestion de la mémoire, et le développement de pilotes de périphériques.
+MicroOS est un système d'exploitation minimaliste conçu pour l'apprentissage et l'expérimentation avec les concepts fondamentaux des systèmes d'exploitation. Ce projet vise à fournir une base solide pour explorer la gestion des processus, la gestion de la mémoire, et le développement de pilotes de périphériques. L'ISO de MicroOS est disponible à la racine du projet :)
 
 ## Caractéristiques
 
