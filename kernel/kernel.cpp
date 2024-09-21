@@ -1,7 +1,11 @@
 #include <cstdint>
 #include <cstdio>
+#include <cstdarg>
+
 #include "memory.h"
 #include "process.h"
+#include "file.h"
+#include "string_utils.h"
 
 // Déclaration de itoa
 void itoa(int num, char *buffer);
@@ -45,11 +49,18 @@ void clear_screen()
 	move_cursor();
 }
 
-extern "C" void kernel_printf(const char *str)
+extern "C" void kernel_printf(const char *format, ...)
 {
-	for (int i = 0; str[i] != '\0'; ++i)
+	char buffer[256]; // Un buffer temporaire
+	va_list args;
+	va_start(args, format);
+	my_snprintf(buffer, sizeof(buffer), format, args);
+	va_end(args);
+
+	// Maintenant, écris dans la mémoire vidéo
+	for (int i = 0; buffer[i] != '\0'; ++i)
 	{
-		char c = str[i];
+		char c = buffer[i];
 		if (c == '\n')
 		{
 			cursor_x = 0;
@@ -268,6 +279,21 @@ extern "C" void kernelMain(void *multiboot_structure, uint32_t magicnumber)
 	{
 		kernel_printf("Erreur: impossible de creer le processus.\n");
 	}
+
+	Directory root_directory = {.file_count = 0}; // Les fichiers seront initialisés par défaut
+
+	// Créer un fichier avec du contenu
+	if (create_file(root_directory, "mon_fichier.txt", "Ceci est un test de fichier."))
+	{
+		kernel_printf("\nFichier cree avec succes.\n");
+	}
+	else
+	{
+		kernel_printf("Échec de la création du fichier.\n");
+	}
+
+	// Afficher le contenu du fichier
+	display_file_content(root_directory, "mon_fichier.txt");
 
 	while (1)
 	{
