@@ -5,10 +5,13 @@ mkdir -p bin
 nasm -f elf32 boot/boot.asm -o bin/boot.o
 
 # Compile the C++ Kernel File
-g++ -m32 -c kernel/kernel.cpp -o bin/kernel.o
+g++ -m32 -fno-stack-protector -c kernel/kernel.cpp -o bin/kernel.o
+
+# Compile the Memory Management Files
+g++ -m32 -fno-stack-protector -c kernel/memory.cpp -o bin/memory.o
 
 # Link the Object Files
-ld -m elf_i386 -T linker.ld -o bin/kernel.bin bin/boot.o bin/kernel.o
+ld -m elf_i386 -T linker.ld -o bin/kernel.bin bin/boot.o bin/kernel.o bin/memory.o
 
 # Create ISO (optional)
 mkdir -p iso/boot/grub

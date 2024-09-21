@@ -1,18 +1,235 @@
 #include <cstdint>
+#include "memory.h"
 
+const int VGA_WIDTH = 80;
+const int VGA_HEIGHT = 25;
+unsigned short *VideoMemory = (unsigned short *)0xb8000;
+int cursor_x = 0;
+int cursor_y = 0;
+
+// Fonction pour envoyer un octet à un port d'E/S
+extern "C" void outb(uint16_t port, uint8_t value)
+{
+	asm volatile("outb %0, %1" : : "a"(value), "Nd"(port));
+}
+
+// Fonction pour placer le curseur
+void move_cursor()
+{
+	unsigned short cursorLocation = cursor_y * VGA_WIDTH + cursor_x;
+	outb(0x3D4, 14);				  // Commande pour high cursor byte
+	outb(0x3D5, cursorLocation >> 8); // Envoyer le high byte
+	outb(0x3D4, 15);				  // Commande pour low cursor byte
+	outb(0x3D5, cursorLocation);	  // Envoyer le low byte
+}
+
+// Fonction pour effacer l'écran
+void clear_screen()
+{
+	for (int y = 0; y < VGA_HEIGHT; y++)
+	{
+		for (int x = 0; x < VGA_WIDTH; x++)
+		{
+			VideoMemory[y * VGA_WIDTH + x] = (VideoMemory[y * VGA_WIDTH + x] & 0xFF00) | ' ';
+		}
+	}
+	cursor_x = 0;
+	cursor_y = 0;
+	move_cursor();
+}
+
+// Fonction pour afficher du texte avec gestion des sauts de ligne
 extern "C" void kernel_printf(const char *str)
 {
-	static unsigned short *VideoMemory = (unsigned short *)0xb8000;
-
 	for (int i = 0; str[i] != '\0'; ++i)
 	{
-		VideoMemory[i] = (VideoMemory[i] & 0xFF00) | str[i];
+		char c = str[i];
+		if (c == '\n') // Gestion du saut de ligne
+		{
+			cursor_x = 0;
+			cursor_y++;
+		}
+		else
+		{
+			VideoMemory[cursor_y * VGA_WIDTH + cursor_x] = (VideoMemory[cursor_y * VGA_WIDTH + cursor_x] & 0xFF00) | c;
+			cursor_x++;
+			if (cursor_x >= VGA_WIDTH) // Sauter à la ligne suivante si on atteint la fin de ligne
+			{
+				cursor_x = 0;
+				cursor_y++;
+			}
+		}
+
+		if (cursor_y >= VGA_HEIGHT) // Scrolling si on atteint le bas de l'écran
+		{
+			for (int y = 0; y < VGA_HEIGHT - 1; y++)
+			{
+				for (int x = 0; x < VGA_WIDTH; x++)
+				{
+					VideoMemory[y * VGA_WIDTH + x] = VideoMemory[(y + 1) * VGA_WIDTH + x];
+				}
+			}
+			cursor_y = VGA_HEIGHT - 1;
+			for (int x = 0; x < VGA_WIDTH; x++)
+			{
+				VideoMemory[cursor_y * VGA_WIDTH + x] = (VideoMemory[cursor_y * VGA_WIDTH + x] & 0xFF00) | ' ';
+			}
+		}
+	}
+	move_cursor(); // Mettre à jour la position du curseur
+}
+
+// Fonction pour afficher un message de test avec succès ou échec
+extern "C" void test_message(const char *message, bool success)
+{
+	kernel_printf(message); // Afficher le message du test
+	if (success)
+	{
+		kernel_printf(" [ OK ]\n"); // Si succès
+	}
+	else
+	{
+		kernel_printf(" [ FAIL ]\n"); // Si échec
 	}
 }
 
+// Structure de l'IDT
+struct idt_entry
+{
+	uint16_t base_lo;
+	uint16_t sel;
+	uint8_t always0;
+	uint8_t flags;
+	uint16_t base_hi;
+} __attribute__((packed));
+
+struct idt_ptr
+{
+	uint16_t limit;
+	uint32_t base;
+} __attribute__((packed));
+
+#define IDT_ENTRIES 256
+idt_entry idt[IDT_ENTRIES];
+idt_ptr idtp;
+
+// Fonction pour définir une entrée dans l'IDT
+void idt_set_gate(int num, uint32_t base, uint16_t sel, uint8_t flags)
+{
+	idt[num].base_lo = base & 0xFFFF;
+	idt[num].base_hi = (base >> 16) & 0xFFFF;
+	idt[num].sel = sel;
+	idt[num].always0 = 0;
+	idt[num].flags = flags;
+}
+
+// Fonction pour charger l'IDT (en assembleur)
+extern "C" void idt_load(uint32_t); // Prototype de la fonction ASM
+
+void idt_install()
+{
+	idtp.limit = (sizeof(idt_entry) * IDT_ENTRIES) - 1;
+	idtp.base = (uint32_t)&idt;
+
+	// Initialise l'IDT à zéro
+	for (int i = 0; i < IDT_ENTRIES; i++)
+	{
+		idt_set_gate(i, 0, 0, 0);
+	}
+
+	idt_load((uint32_t)&idtp);				   // Charger l'IDT via ASM
+	test_message("Chargement de l'IDT", true); // Afficher message de succès
+}
+
+// Exemple de gestionnaire d'interruptions simple (ISR)
+extern "C" void isr_handler(uint32_t int_no)
+{
+	kernel_printf("Interrupt received: ");
+	// Affichage basique du numéro de l'interruption
+	char num[3] = {(char)('0' + int_no / 10), (char)('0' + int_no % 10), '\0'};
+	kernel_printf(num);
+	kernel_printf("\n");
+}
+
+// Fonctions ASM pour la gestion de la pagination
+extern "C" void load_page_directory(uint32_t *page_directory);
+extern "C" void enable_paging();
+
+// Structure pour la pagination
+uint32_t page_directory[1024] __attribute__((aligned(4096)));
+uint32_t first_page_table[1024] __attribute__((aligned(4096)));
+
+void setup_paging()
+{
+	for (int i = 0; i < 1024; i++)
+	{
+		page_directory[i] = 0x00000002;			// Le bit 2 est activé pour marquer une table de pages
+		first_page_table[i] = (i * 0x1000) | 3; // Adresse physique = virtuelle (RW, Present)
+	}
+
+	// Ajouter la première table de pages à la directory
+	page_directory[0] = ((uint32_t)first_page_table) | 3;
+
+	load_page_directory(page_directory);
+	enable_paging();
+	test_message("Activation de la pagination", true); // Afficher message de succès
+}
+
+// Prototype de la fonction ASM pour lire le port I/O
+extern "C" uint8_t inb(uint16_t port);
+
+// Gestionnaire clavier
+extern "C" void keyboard_handler()
+{
+	uint8_t scancode = inb(0x60); // Lire le scancode depuis le port clavier
+	kernel_printf("Key pressed\n");
+}
+
+// Fonction pour configurer l'IDT et installer le gestionnaire clavier
+void keyboard_install()
+{
+	idt_set_gate(33, (uint32_t)keyboard_handler, 0x08, 0x8E); // IRQ1 (Clavier)
+	test_message("Initialisation du clavier", true);		  // Afficher message de succès
+}
+
+// Fonction principale du kernel
 extern "C" void kernelMain(void *multiboot_structure, uint32_t magicnumber)
 {
-	kernel_printf("Hello World");
+	clear_screen(); // Nettoyer l'écran avant d'afficher les messages
+	kernel_printf("Initialisation du kernel...\n");
+
+	init_memory(); // Initialiser la gestion de la mémoire
+
+	// Installer l'IDT
+	idt_install();
+
+	// Installer le clavier
+	keyboard_install();
+
+	// Configurer la pagination
+	setup_paging();
+
+	// Test d'allocation de mémoire
+	void *ptr = allocate_memory(64); // Allouer 64 octets
+	if (ptr)
+	{
+		kernel_printf("Allocated 64 bytes of memory successfully.\n");
+	}
+	else
+	{
+		kernel_printf("Failed to allocate memory.\n");
+	}
+
+	// Libérer la mémoire
+	free_memory(ptr);
+	kernel_printf("Memory freed successfully.\n");
+
+	// Afficher un message final
+	kernel_printf("\nKernel initialise avec succes!\n");
+
+	// Boucle infinie pour empêcher l'arrêt du kernel
 	while (1)
-		;
+	{
+		// Boucle d'attente
+	}
 }
