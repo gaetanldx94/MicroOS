@@ -46,87 +46,120 @@ void shell()
 
 bool key_pressed[256] = {false}; // Tableau pour suivre l'état des touches
 
-char get_char() {
-    uint8_t scancode = inb(0x60);
+char get_char()
+{
+	uint8_t scancode = inb(0x60);
 
-    // Vérifie si c'est un scancode de relâchement
-    if (scancode & 0x80) {
-        key_pressed[scancode & 0x7F] = false; // Marque la touche comme non enfoncée
-        return '\0'; // Retourne un caractère nul
-    }
+	// Vérifie si c'est un scancode de relâchement
+	if (scancode & 0x80)
+	{
+		key_pressed[scancode & 0x7F] = false; // Marque la touche comme non enfoncée
+		return '\0';						  // Retourne un caractère nul
+	}
 
-    // Si la touche est déjà enfoncée, ignorer
-    if (key_pressed[scancode]) {
-        return '\0'; // Ignore les pressions répétées
-    }
+	// Si la touche est déjà enfoncée, ignorer
+	if (key_pressed[scancode])
+	{
+		return '\0'; // Ignore les pressions répétées
+	}
 
-    key_pressed[scancode] = true;
+	key_pressed[scancode] = true;
 
-    // Mappage des touches pour un clavier AZERTY
-    switch (scancode) {
-    case 0x10: return 'a'; // A
-    case 0x11: return 'z'; // Z
-    case 0x12: return 'e'; // E
-    case 0x13: return 'r'; // R
-    case 0x14: return 't'; // T
-    case 0x15: return 'y'; // Y
-    case 0x16: return 'u'; // U
-    case 0x17: return 'i'; // I
-    case 0x18: return 'o'; // O
-    case 0x19: return 'p'; // P
-    case 0x1E: return 'q'; // Q
-    case 0x1F: return 's'; // S
-    case 0x20: return 'd'; // D
-    case 0x21: return 'f'; // F
-    case 0x22: return 'g'; // G
-    case 0x23: return 'h'; // H
-    case 0x24: return 'j'; // J
-    case 0x25: return 'k'; // K
-    case 0x26: return 'l'; // L
-    case 0x27: return 'm'; // M
+	// Mappage des touches pour un clavier AZERTY
+	switch (scancode)
+	{
+	case 0x10:
+		return 'a'; // A
+	case 0x11:
+		return 'z'; // Z
+	case 0x12:
+		return 'e'; // E
+	case 0x13:
+		return 'r'; // R
+	case 0x14:
+		return 't'; // T
+	case 0x15:
+		return 'y'; // Y
+	case 0x16:
+		return 'u'; // U
+	case 0x17:
+		return 'i'; // I
+	case 0x18:
+		return 'o'; // O
+	case 0x19:
+		return 'p'; // P
+	case 0x1E:
+		return 'q'; // Q
+	case 0x1F:
+		return 's'; // S
+	case 0x20:
+		return 'd'; // D
+	case 0x21:
+		return 'f'; // F
+	case 0x22:
+		return 'g'; // G
+	case 0x23:
+		return 'h'; // H
+	case 0x24:
+		return 'j'; // J
+	case 0x25:
+		return 'k'; // K
+	case 0x26:
+		return 'l'; // L
+	case 0x27:
+		return 'm'; // M
 
-    // Ajout des caractères de W à N
-    case 0x2C: return 'w'; // W
-    case 0x2D: return 'x'; // X
-    case 0x2E: return 'c'; // C
-    case 0x2F: return 'v'; // V
-	case 0x30: return 'b'; // B
-	case 0x31: return 'n'; // B
+	// Ajout des caractères de W à N
+	case 0x2C:
+		return 'w'; // W
+	case 0x2D:
+		return 'x'; // X
+	case 0x2E:
+		return 'c'; // C
+	case 0x2F:
+		return 'v'; // V
+	case 0x30:
+		return 'b'; // B
+	case 0x31:
+		return 'n'; // B
 
-    case 0x39: return ' ';  // Espace
-    case 0x1C: return '\n'; // Entrée
+	case 0x39:
+		return ' '; // Espace
+	case 0x1C:
+		return '\n'; // Entrée
 
-    // Ajoute d'autres caractères si nécessaire
-    default: return '\0'; // Retourne un caractère nul si non reconnu
+	// Ajoute d'autres caractères si nécessaire
+	default:
+		return '\0'; // Retourne un caractère nul si non reconnu
+	}
 }
 
+void read_command(char *buffer, size_t size)
+{
+	size_t i = 0;
+	char c;
 
+	while (i < size - 1)
+	{
+		c = get_char(); // Obtenir un caractère
 
+		// Ignore les caractères nuls
+		if (c == '\0')
+		{
+			continue; // Ne fais rien si c'est un caractère nul
+		}
 
-}
+		if (c == '\n')
+		{
+			break; // Fin de ligne
+		}
 
-void read_command(char *buffer, size_t size) {
-    size_t i = 0;
-    char c;
+		buffer[i] = c;			// Ajoute le caractère au buffer
+		kernel_printf("%c", c); // Affiche le caractère
 
-    while (i < size - 1) {
-        c = get_char(); // Obtenir un caractère
-
-        // Ignore les caractères nuls
-        if (c == '\0') {
-            continue; // Ne fais rien si c'est un caractère nul
-        }
-
-        if (c == '\n') {
-            break; // Fin de ligne
-        }
-
-        buffer[i] = c; // Ajoute le caractère au buffer
-        kernel_printf("%c", c); // Affiche le caractère
-
-        i++; // Incrémente l'index après avoir ajouté le caractère
-    }
-    buffer[i] = '\0'; // Terminateur nul
+		i++; // Incrémente l'index après avoir ajouté le caractère
+	}
+	buffer[i] = '\0'; // Terminateur nul
 }
 
 void parse_cat_command(const char *command, char *filename)
@@ -198,49 +231,57 @@ void clear_screen()
 	move_cursor();
 }
 
-extern "C" void kernel_printf(const char *format, ...) {
-    char buffer[256];
-    va_list args;
-    va_start(args, format);
+extern "C" void kernel_printf(const char *format, ...)
+{
+	char buffer[256];
+	va_list args;
+	va_start(args, format);
 
-    // Formater le texte
-    my_snprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
+	// Formater le texte
+	my_snprintf(buffer, sizeof(buffer), format, args);
+	va_end(args);
 
-    // Écrire chaque caractère dans la mémoire vidéo
-    for (int i = 0; buffer[i] != '\0'; ++i) {
-        char c = buffer[i];
-        if (c == '\n') {
-            cursor_x = 0;
-            cursor_y++;
-        } else {
-            // Écrire le caractère dans la mémoire vidéo
-            VideoMemory[cursor_y * VGA_WIDTH + cursor_x] = (VideoMemory[cursor_y * VGA_WIDTH + cursor_x] & 0xFF00) | c;
-            cursor_x++;
-            if (cursor_x >= VGA_WIDTH) {
-                cursor_x = 0;
-                cursor_y++;
-            }
-        }
+	// Écrire chaque caractère dans la mémoire vidéo
+	for (int i = 0; buffer[i] != '\0'; ++i)
+	{
+		char c = buffer[i];
+		if (c == '\n')
+		{
+			cursor_x = 0;
+			cursor_y++;
+		}
+		else
+		{
+			// Écrire le caractère dans la mémoire vidéo
+			VideoMemory[cursor_y * VGA_WIDTH + cursor_x] = (VideoMemory[cursor_y * VGA_WIDTH + cursor_x] & 0xFF00) | c;
+			cursor_x++;
+			if (cursor_x >= VGA_WIDTH)
+			{
+				cursor_x = 0;
+				cursor_y++;
+			}
+		}
 
-        if (cursor_y >= VGA_HEIGHT) {
-            // Gérer le défilement
-            for (int y = 0; y < VGA_HEIGHT - 1; y++) {
-                for (int x = 0; x < VGA_WIDTH; x++) {
-                    VideoMemory[y * VGA_WIDTH + x] = VideoMemory[(y + 1) * VGA_WIDTH + x];
-                }
-            }
-            cursor_y = VGA_HEIGHT - 1;
-            for (int x = 0; x < VGA_WIDTH; x++) {
-                VideoMemory[cursor_y * VGA_WIDTH + x] = (VideoMemory[cursor_y * VGA_WIDTH + x] & 0xFF00) | ' ';
-            }
-        }
-    }
+		if (cursor_y >= VGA_HEIGHT)
+		{
+			// Gérer le défilement
+			for (int y = 0; y < VGA_HEIGHT - 1; y++)
+			{
+				for (int x = 0; x < VGA_WIDTH; x++)
+				{
+					VideoMemory[y * VGA_WIDTH + x] = VideoMemory[(y + 1) * VGA_WIDTH + x];
+				}
+			}
+			cursor_y = VGA_HEIGHT - 1;
+			for (int x = 0; x < VGA_WIDTH; x++)
+			{
+				VideoMemory[cursor_y * VGA_WIDTH + x] = (VideoMemory[cursor_y * VGA_WIDTH + x] & 0xFF00) | ' ';
+			}
+		}
+	}
 
-    move_cursor(); // Mettre à jour le curseur après l'écriture
+	move_cursor(); // Mettre à jour le curseur après l'écriture
 }
-
-
 
 void kernel_printf_int(int value)
 {
