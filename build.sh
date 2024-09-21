@@ -10,8 +10,11 @@ g++ -m32 -fno-stack-protector -c kernel/kernel.cpp -o bin/kernel.o
 # Compile the Memory Management Files
 g++ -m32 -fno-stack-protector -c kernel/memory.cpp -o bin/memory.o
 
+# Compile the Process Management Files
+g++ -m32 -fno-stack-protector -c kernel/process.cpp -o bin/process.o
+
 # Link the Object Files
-ld -m elf_i386 -T linker.ld -o bin/kernel.bin bin/boot.o bin/kernel.o bin/memory.o
+ld -m elf_i386 -T linker.ld -o bin/kernel.bin bin/boot.o bin/kernel.o bin/memory.o bin/process.o
 
 # Create ISO (optional)
 mkdir -p iso/boot/grub

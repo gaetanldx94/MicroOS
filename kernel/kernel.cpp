@@ -1,5 +1,10 @@
 #include <cstdint>
+#include <cstdio>
 #include "memory.h"
+#include "process.h"
+
+// Déclaration de itoa
+void itoa(int num, char *buffer);
 
 const int VGA_WIDTH = 80;
 const int VGA_HEIGHT = 25;
@@ -7,23 +12,25 @@ unsigned short *VideoMemory = (unsigned short *)0xb8000;
 int cursor_x = 0;
 int cursor_y = 0;
 
-// Fonction pour envoyer un octet à un port d'E/S
+// Déclarations externes
+extern "C" void init_process_manager();
+extern "C" void context_switch();
+extern "C" void process_entry(uint32_t pid, const char *process_name); // Assurez-vous que cette fonction est définie
+
 extern "C" void outb(uint16_t port, uint8_t value)
 {
 	asm volatile("outb %0, %1" : : "a"(value), "Nd"(port));
 }
 
-// Fonction pour placer le curseur
 void move_cursor()
 {
 	unsigned short cursorLocation = cursor_y * VGA_WIDTH + cursor_x;
-	outb(0x3D4, 14);				  // Commande pour high cursor byte
-	outb(0x3D5, cursorLocation >> 8); // Envoyer le high byte
-	outb(0x3D4, 15);				  // Commande pour low cursor byte
-	outb(0x3D5, cursorLocation);	  // Envoyer le low byte
+	outb(0x3D4, 14);
+	outb(0x3D5, cursorLocation >> 8);
+	outb(0x3D4, 15);
+	outb(0x3D5, cursorLocation);
 }
 
-// Fonction pour effacer l'écran
 void clear_screen()
 {
 	for (int y = 0; y < VGA_HEIGHT; y++)
@@ -38,13 +45,12 @@ void clear_screen()
 	move_cursor();
 }
 
-// Fonction pour afficher du texte avec gestion des sauts de ligne
 extern "C" void kernel_printf(const char *str)
 {
 	for (int i = 0; str[i] != '\0'; ++i)
 	{
 		char c = str[i];
-		if (c == '\n') // Gestion du saut de ligne
+		if (c == '\n')
 		{
 			cursor_x = 0;
 			cursor_y++;
@@ -53,14 +59,14 @@ extern "C" void kernel_printf(const char *str)
 		{
 			VideoMemory[cursor_y * VGA_WIDTH + cursor_x] = (VideoMemory[cursor_y * VGA_WIDTH + cursor_x] & 0xFF00) | c;
 			cursor_x++;
-			if (cursor_x >= VGA_WIDTH) // Sauter à la ligne suivante si on atteint la fin de ligne
+			if (cursor_x >= VGA_WIDTH)
 			{
 				cursor_x = 0;
 				cursor_y++;
 			}
 		}
 
-		if (cursor_y >= VGA_HEIGHT) // Scrolling si on atteint le bas de l'écran
+		if (cursor_y >= VGA_HEIGHT)
 		{
 			for (int y = 0; y < VGA_HEIGHT - 1; y++)
 			{
@@ -76,24 +82,68 @@ extern "C" void kernel_printf(const char *str)
 			}
 		}
 	}
-	move_cursor(); // Mettre à jour la position du curseur
+	move_cursor();
 }
 
-// Fonction pour afficher un message de test avec succès ou échec
+void kernel_printf_int(int value)
+{
+	char buffer[12];	   // Assez grand pour un entier
+	itoa(value, buffer);   // Utiliser la fonction itoa pour convertir l'entier en chaîne
+	kernel_printf(buffer); // Afficher la chaîne résultante
+}
+
+void itoa(int num, char *buffer)
+{
+	int i = 0;
+	bool isNegative = false;
+
+	if (num == 0)
+	{
+		buffer[i++] = '0';
+		buffer[i] = '\0';
+		return;
+	}
+
+	if (num < 0)
+	{
+		isNegative = true;
+		num = -num;
+	}
+
+	while (num != 0)
+	{
+		buffer[i++] = (num % 10) + '0';
+		num /= 10;
+	}
+
+	if (isNegative)
+	{
+		buffer[i++] = '-';
+	}
+
+	buffer[i] = '\0';
+
+	for (int j = 0; j < i / 2; j++)
+	{
+		char temp = buffer[j];
+		buffer[j] = buffer[i - j - 1];
+		buffer[i - j - 1] = temp;
+	}
+}
+
 extern "C" void test_message(const char *message, bool success)
 {
-	kernel_printf(message); // Afficher le message du test
+	kernel_printf(message);
 	if (success)
 	{
-		kernel_printf(" [ OK ]\n"); // Si succès
+		kernel_printf(" [ OK ]\n");
 	}
 	else
 	{
-		kernel_printf(" [ FAIL ]\n"); // Si échec
+		kernel_printf(" [ FAIL ]\n");
 	}
 }
 
-// Structure de l'IDT
 struct idt_entry
 {
 	uint16_t base_lo;
@@ -113,7 +163,6 @@ struct idt_ptr
 idt_entry idt[IDT_ENTRIES];
 idt_ptr idtp;
 
-// Fonction pour définir une entrée dans l'IDT
 void idt_set_gate(int num, uint32_t base, uint16_t sel, uint8_t flags)
 {
 	idt[num].base_lo = base & 0xFFFF;
@@ -123,39 +172,33 @@ void idt_set_gate(int num, uint32_t base, uint16_t sel, uint8_t flags)
 	idt[num].flags = flags;
 }
 
-// Fonction pour charger l'IDT (en assembleur)
-extern "C" void idt_load(uint32_t); // Prototype de la fonction ASM
+extern "C" void idt_load(uint32_t);
 
 void idt_install()
 {
 	idtp.limit = (sizeof(idt_entry) * IDT_ENTRIES) - 1;
 	idtp.base = (uint32_t)&idt;
 
-	// Initialise l'IDT à zéro
 	for (int i = 0; i < IDT_ENTRIES; i++)
 	{
 		idt_set_gate(i, 0, 0, 0);
 	}
 
-	idt_load((uint32_t)&idtp);				   // Charger l'IDT via ASM
-	test_message("Chargement de l'IDT", true); // Afficher message de succès
+	idt_load((uint32_t)&idtp);
+	test_message("Chargement de l'IDT", true);
 }
 
-// Exemple de gestionnaire d'interruptions simple (ISR)
 extern "C" void isr_handler(uint32_t int_no)
 {
 	kernel_printf("Interrupt received: ");
-	// Affichage basique du numéro de l'interruption
 	char num[3] = {(char)('0' + int_no / 10), (char)('0' + int_no % 10), '\0'};
 	kernel_printf(num);
 	kernel_printf("\n");
 }
 
-// Fonctions ASM pour la gestion de la pagination
 extern "C" void load_page_directory(uint32_t *page_directory);
 extern "C" void enable_paging();
 
-// Structure pour la pagination
 uint32_t page_directory[1024] __attribute__((aligned(4096)));
 uint32_t first_page_table[1024] __attribute__((aligned(4096)));
 
@@ -163,54 +206,44 @@ void setup_paging()
 {
 	for (int i = 0; i < 1024; i++)
 	{
-		page_directory[i] = 0x00000002;			// Le bit 2 est activé pour marquer une table de pages
-		first_page_table[i] = (i * 0x1000) | 3; // Adresse physique = virtuelle (RW, Present)
+		page_directory[i] = 0x00000002;
+		first_page_table[i] = (i * 0x1000) | 3;
 	}
 
-	// Ajouter la première table de pages à la directory
 	page_directory[0] = ((uint32_t)first_page_table) | 3;
 
 	load_page_directory(page_directory);
 	enable_paging();
-	test_message("Activation de la pagination", true); // Afficher message de succès
+	test_message("Activation de la pagination", true);
 }
 
-// Prototype de la fonction ASM pour lire le port I/O
 extern "C" uint8_t inb(uint16_t port);
 
-// Gestionnaire clavier
 extern "C" void keyboard_handler()
 {
-	uint8_t scancode = inb(0x60); // Lire le scancode depuis le port clavier
+	uint8_t scancode = inb(0x60);
 	kernel_printf("Key pressed\n");
 }
 
-// Fonction pour configurer l'IDT et installer le gestionnaire clavier
 void keyboard_install()
 {
-	idt_set_gate(33, (uint32_t)keyboard_handler, 0x08, 0x8E); // IRQ1 (Clavier)
-	test_message("Initialisation du clavier", true);		  // Afficher message de succès
+	idt_set_gate(33, (uint32_t)keyboard_handler, 0x08, 0x8E);
+	test_message("Initialisation du clavier", true);
 }
 
-// Fonction principale du kernel
 extern "C" void kernelMain(void *multiboot_structure, uint32_t magicnumber)
 {
-	clear_screen(); // Nettoyer l'écran avant d'afficher les messages
+	clear_screen();
 	kernel_printf("Initialisation du kernel...\n");
 
-	init_memory(); // Initialiser la gestion de la mémoire
+	init_memory();
 
-	// Installer l'IDT
 	idt_install();
-
-	// Installer le clavier
 	keyboard_install();
-
-	// Configurer la pagination
 	setup_paging();
+	init_process_manager();
 
-	// Test d'allocation de mémoire
-	void *ptr = allocate_memory(64); // Allouer 64 octets
+	void *ptr = allocate_memory(64);
 	if (ptr)
 	{
 		kernel_printf("Allocated 64 bytes of memory successfully.\n");
@@ -220,16 +253,24 @@ extern "C" void kernelMain(void *multiboot_structure, uint32_t magicnumber)
 		kernel_printf("Failed to allocate memory.\n");
 	}
 
-	// Libérer la mémoire
 	free_memory(ptr);
 	kernel_printf("Memory freed successfully.\n");
 
-	// Afficher un message final
-	kernel_printf("\nKernel initialise avec succes!\n");
+	const char *process_name = "TestProcess";						 // Nom du processus
+	int pid = create_process((uint32_t)process_entry, process_name); // Passer le nom
 
-	// Boucle infinie pour empêcher l'arrêt du kernel
+	if (pid != -1)
+	{
+		kernel_printf("Processus cree avec PID: ");
+		kernel_printf_int(pid);
+	}
+	else
+	{
+		kernel_printf("Erreur: impossible de creer le processus.\n");
+	}
+
 	while (1)
 	{
-		// Boucle d'attente
+		context_switch();
 	}
 }
