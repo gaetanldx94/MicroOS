@@ -6,17 +6,16 @@
 
 struct MemoryBlock
 {
-	size_t size;	   // Taille du bloc
-	bool free;		   // Est-ce que le bloc est libre ?
-	MemoryBlock *next; // Pointeur vers le prochain bloc
+	size_t size;
+	bool free;
+	MemoryBlock *next;
 };
 
-// Déclarations de fonctions
 extern "C"
 {
-	void init_memory();					// Fonction pour initialiser la mémoire
-	void *allocate_memory(size_t size); // Fonction pour allouer de la mémoire
-	void free_memory(void *ptr);		// Fonction pour libérer de la mémoire
+	void init_memory();
+	void *allocate_memory(size_t size);
+	void free_memory(void *ptr);
 }
 
-#endif // MEMORY_H
+#endif

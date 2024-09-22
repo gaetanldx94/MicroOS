@@ -12,9 +12,9 @@ bool create_file(Directory &dir, const char *filename, const char *content)
 
 	File &file = dir.files[dir.file_count];
 	my_strncpy(file.name, filename, sizeof(file.name) - 1);
-	file.name[sizeof(file.name) - 1] = '\0'; // Assurez-vous que le nom est null-terminé
+	file.name[sizeof(file.name) - 1] = '\0';
 	my_strncpy(file.content, content, sizeof(file.content) - 1);
-	file.content[sizeof(file.content) - 1] = '\0'; // Assurez-vous que le contenu est null-terminé
+	file.content[sizeof(file.content) - 1] = '\0';
 	file.size = my_strlen(content);
 	dir.file_count++;
 	return true;

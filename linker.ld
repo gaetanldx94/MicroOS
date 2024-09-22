@@ -3,26 +3,26 @@ OUTPUT_FORMAT(elf32-i386)
 OUTPUT_ARCH(i386:i386)
 
 SECTIONS {
-    . = 0x00100000;  /* Code starts at 1MB */
+    . = 0x00100000;
 
     .multiboot : {
-        *(.multiboot)  /* Include the Multiboot section */
+        *(.multiboot)
     }
 
     .text : {
-        *(.text)      /* All .text sections */
+        *(.text)
     }
 
     .rodata : {
-        *(.rodata*)   /* All .rodata sections */
+        *(.rodata*)
     }
 
     .data : {
-        *(.data)      /* All .data sections */
+        *(.data)
     }
 
     .bss : {
-        *(COMMON)     /* All COMMON sections */
-        *(.bss)       /* All .bss sections */
+        *(COMMON)
+        *(.bss)
     }
 }

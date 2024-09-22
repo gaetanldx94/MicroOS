@@ -1,7 +1,7 @@
 section .multiboot
-    dd 0x1BADB002         ; Magic number
-    dd (1 << 0 | 1 << 1)  ; Flags
-    dd -(0x1BADB002 + (1 << 0 | 1 << 1))  ; Checksum
+    dd 0x1BADB002
+    dd (1 << 0 | 1 << 1)
+    dd -(0x1BADB002 + (1 << 0 | 1 << 1))
 
 section .text
     global loader
@@ -44,37 +44,29 @@ section .text
     extern inb
 
 loader:
-    ; Configurer la pile
-    mov esp, 0x9FC00      ; Exemple de position de la pile
-
-    ; Appeler la fonction principale du kernel
+    mov esp, 0x9FC00
     call kernelMain
 
-    ; Arrêter le CPU
 _stop:
-    cli                   ; Désactiver les interruptions
-    hlt                   ; Arrêter le CPU
-    jmp _stop             ; Boucle infinie
+    cli
+    hlt
+    jmp _stop
 
-; Fonction pour charger l'IDT
 idt_load:
-    lidt [esp + 4]        ; Charger l'IDT à partir du pointeur
+    lidt [esp + 4]
     ret
 
-; Fonction pour charger le répertoire des pages
 load_page_directory:
     mov eax, [esp + 4]
-    mov cr3, eax          ; Charger l'adresse du répertoire des pages dans CR3
+    mov cr3, eax
     ret
 
-; Fonction pour activer la pagination
 enable_paging:
     mov eax, cr0
-    or eax, 0x80000000    ; Activer le bit PG pour la pagination
+    or eax, 0x80000000
     mov cr0, eax
     ret
 
-; Gestionnaires d'interruptions (ISR0 - ISR31) pour les exceptions
 isr0: cli; pusha; call isr_handler; popa; sti; iret
 isr1: cli; pusha; call isr_handler; popa; sti; iret
 isr2: cli; pusha; call isr_handler; popa; sti; iret
@@ -108,7 +100,6 @@ isr29: cli; pusha; call isr_handler; popa; sti; iret
 isr30: cli; pusha; call isr_handler; popa; sti; iret
 isr31: cli; pusha; call isr_handler; popa; sti; iret
 
-; Fonction pour lire depuis un port I/O
 inb:
     mov dx, [esp + 4]
     in al, dx
@@ -116,4 +107,4 @@ inb:
     ret
 
 section .bss
-    resb 2 * 1024 * 1024  ; Réserve 2MB pour la pile du kernel
+    resb 2 * 1024 * 1024

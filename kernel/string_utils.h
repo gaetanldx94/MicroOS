@@ -10,4 +10,4 @@ int my_strcmp(const char *str1, const char *str2);
 void my_snprintf(char *buffer, size_t size, const char *format, va_list args);
 int my_strncmp(const char *str1, const char *str2, size_t n);
 
-#endif // STRING_UTILS_H
+#endif

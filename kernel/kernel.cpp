@@ -9,7 +9,6 @@
 
 Directory root_directory = {.file_count = 0};
 
-// Déclaration de itoa
 void itoa(int num, char *buffer);
 
 const int VGA_WIDTH = 80;
@@ -18,7 +17,6 @@ unsigned short *VideoMemory = (unsigned short *)0xb8000;
 int cursor_x = 0;
 int cursor_y = 0;
 
-// Déclarations externes
 extern "C" void init_process_manager();
 extern "C" void context_switch();
 extern "C" void process_entry(uint32_t pid, const char *process_name);
@@ -44,28 +42,25 @@ void shell()
 	}
 }
 
-bool key_pressed[256] = {false}; // Tableau pour suivre l'état des touches
+bool key_pressed[256] = {false};
 
 char get_char()
 {
 	uint8_t scancode = inb(0x60);
 
-	// Vérifie si c'est un scancode de relâchement
 	if (scancode & 0x80)
 	{
-		key_pressed[scancode & 0x7F] = false; // Marque la touche comme non enfoncée
-		return '\0';						  // Retourne un caractère nul
+		key_pressed[scancode & 0x7F] = false;
+		return '\0';
 	}
 
-	// Si la touche est déjà enfoncée, ignorer
 	if (key_pressed[scancode])
 	{
-		return '\0'; // Ignore les pressions répétées
+		return '\0';
 	}
 
 	key_pressed[scancode] = true;
 
-	// Mappage des touches pour un clavier AZERTY
 	switch (scancode)
 	{
 	case 0x10:
@@ -108,8 +103,6 @@ char get_char()
 		return 'l'; // L
 	case 0x27:
 		return 'm'; // M
-
-	// Ajout des caractères de W à N
 	case 0x2C:
 		return 'w'; // W
 	case 0x2D:
@@ -122,13 +115,10 @@ char get_char()
 		return 'b'; // B
 	case 0x31:
 		return 'n'; // B
-
 	case 0x39:
 		return ' '; // Espace
 	case 0x1C:
 		return '\n'; // Entrée
-
-	// Ajoute d'autres caractères si nécessaire
 	default:
 		return '\0'; // Retourne un caractère nul si non reconnu
 	}
@@ -141,35 +131,34 @@ void read_command(char *buffer, size_t size)
 
 	while (i < size - 1)
 	{
-		c = get_char(); // Obtenir un caractère
+		c = get_char();
 
-		// Ignore les caractères nuls
 		if (c == '\0')
 		{
-			continue; // Ne fais rien si c'est un caractère nul
+			continue;
 		}
 
 		if (c == '\n')
 		{
-			break; // Fin de ligne
+			break;
 		}
 
-		buffer[i] = c;			// Ajoute le caractère au buffer
-		kernel_printf("%c", c); // Affiche le caractère
+		buffer[i] = c;
+		kernel_printf("%c", c);
 
-		i++; // Incrémente l'index après avoir ajouté le caractère
+		i++;
 	}
-	buffer[i] = '\0'; // Terminateur nul
+	buffer[i] = '\0';
 }
 
 void parse_cat_command(const char *command, char *filename)
 {
-	const char *start = command + 4; // Ignorer "cat "
+	const char *start = command + 4;
 	while (*start != '\0' && *start != ' ')
 	{
 		*filename++ = *start++;
 	}
-	*filename = '\0'; // Terminer la chaîne
+	*filename = '\0';
 }
 
 void execute_command(const char *command)
@@ -177,7 +166,6 @@ void execute_command(const char *command)
 	if (my_strcmp(command, "exit") == 0)
 	{
 		kernel_printf("Sortie du shell.\n");
-		// Logique pour quitter ou redémarrer
 	}
 	else if (my_strncmp(command, "ls", 2) == 0)
 	{
@@ -237,11 +225,9 @@ extern "C" void kernel_printf(const char *format, ...)
 	va_list args;
 	va_start(args, format);
 
-	// Formater le texte
 	my_snprintf(buffer, sizeof(buffer), format, args);
 	va_end(args);
 
-	// Écrire chaque caractère dans la mémoire vidéo
 	for (int i = 0; buffer[i] != '\0'; ++i)
 	{
 		char c = buffer[i];
@@ -252,7 +238,6 @@ extern "C" void kernel_printf(const char *format, ...)
 		}
 		else
 		{
-			// Écrire le caractère dans la mémoire vidéo
 			VideoMemory[cursor_y * VGA_WIDTH + cursor_x] = (VideoMemory[cursor_y * VGA_WIDTH + cursor_x] & 0xFF00) | c;
 			cursor_x++;
 			if (cursor_x >= VGA_WIDTH)
@@ -264,7 +249,6 @@ extern "C" void kernel_printf(const char *format, ...)
 
 		if (cursor_y >= VGA_HEIGHT)
 		{
-			// Gérer le défilement
 			for (int y = 0; y < VGA_HEIGHT - 1; y++)
 			{
 				for (int x = 0; x < VGA_WIDTH; x++)
@@ -280,14 +264,14 @@ extern "C" void kernel_printf(const char *format, ...)
 		}
 	}
 
-	move_cursor(); // Mettre à jour le curseur après l'écriture
+	move_cursor();
 }
 
 void kernel_printf_int(int value)
 {
-	char buffer[12];	   // Assez grand pour un entier
-	itoa(value, buffer);   // Utiliser la fonction itoa pour convertir l'entier en chaîne
-	kernel_printf(buffer); // Afficher la chaîne résultante
+	char buffer[12];
+	itoa(value, buffer);
+	kernel_printf(buffer);
 }
 
 void itoa(int num, char *buffer)
@@ -388,7 +372,7 @@ void idt_install()
 
 extern "C" void isr_handler(uint32_t int_no)
 {
-	kernel_printf("Interrupt received: ");
+	kernel_printf("Interruption reçue: ");
 	char num[3] = {(char)('0' + int_no / 10), (char)('0' + int_no % 10), '\0'};
 	kernel_printf(num);
 	kernel_printf("\n");
@@ -444,18 +428,18 @@ extern "C" void kernelMain(void *multiboot_structure, uint32_t magicnumber)
 	void *ptr = allocate_memory(64);
 	if (ptr)
 	{
-		kernel_printf("Allocated 64 bytes of memory successfully.\n");
+		kernel_printf("64 octets de memoire alloues avec succes.\n");
 	}
 	else
 	{
-		kernel_printf("Failed to allocate memory.\n");
+		kernel_printf("Echec de l'allocation de memoire.\n");
 	}
 
 	free_memory(ptr);
-	kernel_printf("Memory freed successfully.\n");
+	kernel_printf("Memoire liberee avec succes.\n");
 
-	const char *process_name = "TestProcess";						 // Nom du processus
-	int pid = create_process((uint32_t)process_entry, process_name); // Passer le nom
+	const char *process_name = "TestProcess";
+	int pid = create_process((uint32_t)process_entry, process_name);
 
 	if (pid != -1)
 	{
@@ -467,7 +451,6 @@ extern "C" void kernelMain(void *multiboot_structure, uint32_t magicnumber)
 		kernel_printf("Erreur: impossible de creer le processus.\n");
 	}
 
-	// Créer un fichier avec du contenu
 	if (create_file(root_directory, "monfichier", "Ceci est un test de fichier."))
 	{
 		kernel_printf("\nFichier cree avec succes.\n");
@@ -477,7 +460,6 @@ extern "C" void kernelMain(void *multiboot_structure, uint32_t magicnumber)
 		kernel_printf("Échec de la création du fichier.\n");
 	}
 
-	// Afficher le contenu du fichier
 	display_file_content(root_directory, "monfichier");
 
 	kernel_printf("\n");

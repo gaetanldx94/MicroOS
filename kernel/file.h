@@ -1,9 +1,9 @@
 #ifndef FILE_H
 #define FILE_H
 
-#include <cstddef> // Pour size_t
+#include <cstddef>
 
-#define MAX_FILES 10 // Limite du nombre de fichiers dans un répertoire
+#define MAX_FILES 10
 
 struct File
 {
@@ -18,11 +18,9 @@ struct Directory
 	File files[MAX_FILES];
 };
 
-// Déclaration externe de root_directory
 extern Directory root_directory;
 
-// Déclarations de fonctions
 bool create_file(Directory &dir, const char *filename, const char *content);
 void display_file_content(const Directory &dir, const char *filename);
 
-#endif // FILE_H
+#endif

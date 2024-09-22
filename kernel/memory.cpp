@@ -1,11 +1,10 @@
 #include "memory.h"
 
-MemoryBlock *memory_list = nullptr; // Liste de blocs de mémoire
+MemoryBlock *memory_list = nullptr;
 
 void init_memory()
 {
-	// Initialiser le gestionnaire de mémoire
-	memory_list = (MemoryBlock *)0x100000; // Adresse de départ
+	memory_list = (MemoryBlock *)0x100000;
 	memory_list->size = 0x100000 - sizeof(MemoryBlock);
 	memory_list->free = true;
 	memory_list->next = nullptr;
@@ -21,7 +20,6 @@ void *allocate_memory(size_t size)
 		{
 			current->free = false;
 
-			// Si le bloc est trop grand, le diviser
 			if (current->size > size + sizeof(MemoryBlock))
 			{
 				MemoryBlock *next_block = (MemoryBlock *)((uint8_t *)current + sizeof(MemoryBlock) + size);
@@ -32,11 +30,11 @@ void *allocate_memory(size_t size)
 				current->size = size;
 				current->next = next_block;
 			}
-			return (void *)(current + 1); // Retourner l'adresse après le bloc
+			return (void *)(current + 1);
 		}
 		current = current->next;
 	}
-	return nullptr; // Pas assez de mémoire
+	return nullptr;
 }
 
 void free_memory(void *ptr)
@@ -44,10 +42,9 @@ void free_memory(void *ptr)
 	if (!ptr)
 		return;
 
-	MemoryBlock *block = (MemoryBlock *)ptr - 1; // Obtenir le bloc
-	block->free = true;							 // Marquer comme libre
+	MemoryBlock *block = (MemoryBlock *)ptr - 1;
+	block->free = true;
 
-	// Fusionner les blocs libres si possible
 	MemoryBlock *current = memory_list;
 	while (current)
 	{

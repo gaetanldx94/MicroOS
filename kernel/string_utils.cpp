@@ -1,5 +1,5 @@
 #include "string_utils.h"
-#include <cstdarg> // Ajouté pour va_list, va_start, va_end
+#include <cstdarg>
 
 size_t my_strlen(const char *str)
 {
@@ -17,7 +17,7 @@ void my_strncpy(char *dest, const char *src, size_t n)
 	{
 		dest[i] = src[i];
 	}
-	dest[n - 1] = '\0'; // Assurez-vous que le destinataire est null-terminé
+	dest[n - 1] = '\0';
 }
 
 int my_strcmp(const char *str1, const char *str2)
@@ -52,7 +52,7 @@ void my_snprintf(char *buffer, size_t size, const char *format, va_list args)
 	{
 		if (*p == '%')
 		{
-			p++; // Passe au caractère suivant
+			p++;
 			if (*p == 's')
 			{
 				const char *str = va_arg(args, const char *);
@@ -63,18 +63,18 @@ void my_snprintf(char *buffer, size_t size, const char *format, va_list args)
 			}
 			else if (*p == 'c')
 			{
-				char c = (char)va_arg(args, int); // %c attend un int
+				char c = (char)va_arg(args, int);
 				buffer[written++] = c;
 			}
 			else
 			{
-				buffer[written++] = *p; // Ajoute le caractère de format
+				buffer[written++] = *p;
 			}
 		}
 		else
 		{
-			buffer[written++] = *p; // Ajoute le caractère normal
+			buffer[written++] = *p;
 		}
 	}
-	buffer[written] = '\0'; // Assurez-vous que le buffer est null-terminé
+	buffer[written] = '\0';
 }
