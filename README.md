@@ -7,15 +7,6 @@
 
 MicroOS est un système d'exploitation minimaliste conçu pour l'apprentissage et l'expérimentation avec les concepts fondamentaux des systèmes d'exploitation. Ce projet vise à fournir une base solide pour explorer la gestion des processus, la gestion de la mémoire, et le développement de pilotes de périphériques. L'ISO de MicroOS est disponible à la racine du projet :)
 
-## Caractéristiques
-
-- Système d'exploitation minimaliste : Conçu pour fonctionner avec des ressources limitées.
-- Interface en mode texte : Interaction via une console simple et directe.
-- Gestion de fichiers : Capacité à créer, supprimer et afficher le contenu de fichiers.
-- Gestion des processus : Possibilité de gérer plusieurs tâches simultanément.
-- Allocation de mémoire : Utilisation efficace de la mémoire disponible.
-- Extensibilité : Architecture permettant d'ajouter facilement de nouvelles fonctionnalités.
-
 ## Architecture matérielle
 
 Pour exécuter MicroOS, vous aurez besoin d'un ordinateur ou d'une machine virtuelle avec les spécifications suivantes :
