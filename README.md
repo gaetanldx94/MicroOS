@@ -9,10 +9,12 @@ MicroOS est un système d'exploitation minimaliste conçu pour l'apprentissage e
 
 ## Caractéristiques
 
-- Gestion simple des processus avec création et commutation de processus.
-- Affichage sur l'écran VGA.
-- Fonctionnalités de base d'allocation de mémoire.
-- Architecture extensible pour ajouter des fonctionnalités supplémentaires.
+- Système d'exploitation minimaliste : Conçu pour fonctionner avec des ressources limitées.
+- Interface en mode texte : Interaction via une console simple et directe.
+- Gestion de fichiers : Capacité à créer, supprimer et afficher le contenu de fichiers.
+- Gestion des processus : Possibilité de gérer plusieurs tâches simultanément.
+- Allocation de mémoire : Utilisation efficace de la mémoire disponible.
+- Extensibilité : Architecture permettant d'ajouter facilement de nouvelles fonctionnalités.
 
 ## Architecture matérielle
 
