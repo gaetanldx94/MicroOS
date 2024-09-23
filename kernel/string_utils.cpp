@@ -45,6 +45,19 @@ int my_strncmp(const char *str1, const char *str2, size_t n)
 	return 0;
 }
 
+const char *my_strchr(const char *str, char c)
+{
+	while (*str != '\0')
+	{
+		if (*str == c)
+		{
+			return str;
+		}
+		str++;
+	}
+	return nullptr;
+}
+
 void my_snprintf(char *buffer, size_t size, const char *format, va_list args)
 {
 	size_t written = 0;

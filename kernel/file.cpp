@@ -29,7 +29,7 @@ void display_file_content(const Directory &dir, const char *filename)
 		if (my_strcmp(dir.files[i].name, filename) == 0)
 		{
 			file_found = true;
-			kernel_printf("\nContenu de %s :\n%s\n", filename, dir.files[i].content);
+			kernel_printf("\n%s\n", dir.files[i].content);
 
 			break;
 		}
@@ -39,4 +39,24 @@ void display_file_content(const Directory &dir, const char *filename)
 	{
 		kernel_printf("\nFichier %s non trouve.\n", filename);
 	}
+}
+
+bool remove_file(Directory &dir, const char *filename)
+{
+	for (size_t i = 0; i < dir.file_count; i++)
+	{
+		if (my_strcmp(dir.files[i].name, filename) == 0)
+		{
+			for (size_t j = i; j < dir.file_count - 1; j++)
+			{
+				dir.files[j] = dir.files[j + 1];
+			}
+			dir.file_count--;
+			kernel_printf("\nFichier %s supprime avec succes.\n", filename);
+			return true;
+		}
+	}
+
+	kernel_printf("\nErreur: Fichier %s non trouve.\n", filename);
+	return false;
 }

@@ -19,6 +19,7 @@ int cursor_y = 0;
 
 extern "C" void init_process_manager();
 extern "C" void context_switch();
+extern "C" void clear_screen();
 extern "C" void process_entry(uint32_t pid, const char *process_name);
 
 void read_command(char *buffer, size_t size);
@@ -63,6 +64,7 @@ char get_char()
 
 	switch (scancode)
 	{
+	// Ligne AZERTY principale
 	case 0x10:
 		return 'a'; // A
 	case 0x11:
@@ -83,6 +85,8 @@ char get_char()
 		return 'o'; // O
 	case 0x19:
 		return 'p'; // P
+
+	// Ligne "qsdf"
 	case 0x1E:
 		return 'q'; // Q
 	case 0x1F:
@@ -103,6 +107,8 @@ char get_char()
 		return 'l'; // L
 	case 0x27:
 		return 'm'; // M
+
+	// Ligne "wxcvbn"
 	case 0x2C:
 		return 'w'; // W
 	case 0x2D:
@@ -114,13 +120,57 @@ char get_char()
 	case 0x30:
 		return 'b'; // B
 	case 0x31:
-		return 'n'; // B
+		return 'n'; // N
+
+	// Espace et Entrée
 	case 0x39:
 		return ' '; // Espace
 	case 0x1C:
 		return '\n'; // Entrée
+
+	case 0x02:
+		return '&'; // 1 (&)
+	case 0x03:
+		return '\x82'; // 2 (é) -> é (ASCII étendu 130)
+	case 0x04:
+		return '"'; // 3 (")
+	case 0x05:
+		return '\''; // 4 (')
+	case 0x06:
+		return '('; // 5 (()
+	case 0x07:
+		return '-'; // 6 (-)
+	case 0x08:
+		return '\x8A'; // 7 (è) -> è (ASCII étendu 138)
+	case 0x09:
+		return '\x87'; // 9 (ç) -> ç (ASCII étendu 135)
+	case 0x0A:
+		return '\x85'; // 0 (à) -> à (ASCII étendu 133)
+
+	// Touches spéciales
+	case 0x0F:
+		return '\t'; // Tabulation
+	case 0x01:
+		return 27; // Echap (ASCII 27 pour Escape)
+	case 0x0E:
+		return '\b'; // Retour arrière (Backspace)
+
+	// Suppr, Ctrl, Alt, Shift, etc.
+	case 0x7F:
+		return 127; // Suppr (ASCII 127 pour Delete)
+	case 0x2A:
+		return 0; // Shift gauche
+	case 0x36:
+		return 0; // Shift droit
+	case 0x1D:
+		return 0; // Ctrl gauche
+	case 0x38:
+		return 0; // Alt gauche
+	case 0x3A:
+		return 0; // Verrouillage majuscules (Caps Lock)
+
 	default:
-		return '\0'; // Retourne un caractère nul si non reconnu
+		return '\0'; // Caractère nul si scancode non reconnu
 	}
 }
 
@@ -143,11 +193,30 @@ void read_command(char *buffer, size_t size)
 			break;
 		}
 
-		buffer[i] = c;
-		kernel_printf("%c", c);
+		if (c == '\b')
+		{
+			if (i > 0)
+			{
+				i--;
+				buffer[i] = '\0';
 
+				cursor_x--;
+				if (cursor_x < 0)
+				{
+					cursor_x = VGA_WIDTH - 1;
+					cursor_y--;
+				}
+				VideoMemory[cursor_y * VGA_WIDTH + cursor_x] = ' ' | (0x07 << 8);
+			}
+			continue;
+		}
+
+		buffer[i] = c;
 		i++;
+
+		kernel_printf("%c", c);
 	}
+
 	buffer[i] = '\0';
 }
 
@@ -161,21 +230,72 @@ void parse_cat_command(const char *command, char *filename)
 	*filename = '\0';
 }
 
+inline void outw(uint16_t port, uint16_t value)
+{
+	asm volatile("outw %0, %1" : : "a"(value), "Nd"(port));
+}
+
 void execute_command(const char *command)
 {
-	if (my_strcmp(command, "exit") == 0)
+	if (my_strcmp(command, "shutdown") == 0)
 	{
-		kernel_printf("Sortie du shell.\n");
+		outw(0x604, 0x2000);
+
+		while (true)
+		{
+			asm volatile("hlt");
+		}
 	}
 	else if (my_strncmp(command, "ls", 2) == 0)
 	{
 		list_files();
 	}
-	else if (my_strncmp(command, "cat", 3) == 0)
+	else if (my_strncmp(command, "ctd", 3) == 0)
 	{
 		char filename[256];
 		parse_cat_command(command, filename);
 		display_file_content(root_directory, filename);
+	}
+	else if (my_strncmp(command, "clear", 5) == 0)
+	{
+		clear_screen();
+	}
+	else if (my_strncmp(command, "cf", 2) == 0)
+	{
+		const char *args = command + 3;
+
+		const char *space = my_strchr(args, ' ');
+		if (!space)
+		{
+			space = " ";
+		}
+
+		char filename[256];
+		my_strncpy(filename, args, space - args);
+		filename[space - args] = '\0';
+
+		const char *content = space + 1;
+
+		if (!create_file(root_directory, filename, content))
+		{
+			kernel_printf("\nErreur: Impossible de creer le fichier %s.\n", filename);
+		}
+		else
+		{
+			kernel_printf("\nFichier %s cree avec succes.\n", filename);
+		}
+	}
+	else if (my_strncmp(command, "rm", 2) == 0)
+	{
+		const char *filename = command + 3;
+
+		if (my_strlen(filename) == 0)
+		{
+			kernel_printf("\nErreur: Aucun nom de fichier fourni.\n");
+			return;
+		}
+
+		remove_file(root_directory, filename);
 	}
 	else
 	{
@@ -187,8 +307,9 @@ void list_files()
 {
 	for (size_t i = 0; i < root_directory.file_count; i++)
 	{
-		kernel_printf("\n%s\n", root_directory.files[i].name);
+		kernel_printf("\n%s", root_directory.files[i].name);
 	}
+	kernel_printf("\n");
 }
 
 extern "C" void outb(uint16_t port, uint8_t value)

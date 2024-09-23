@@ -22,5 +22,6 @@ extern Directory root_directory;
 
 bool create_file(Directory &dir, const char *filename, const char *content);
 void display_file_content(const Directory &dir, const char *filename);
+bool remove_file(Directory &dir, const char *filename);
 
 #endif

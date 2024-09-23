@@ -1,0 +1,6 @@
+ls       : list
+rm       : remove
+ctd      : Content Display
+cf       : Create File
+shutdown : Exit the OS
+clear    : Clear the screen
