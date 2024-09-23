@@ -1,6 +1,8 @@
-ls       : list
-rm       : remove
-ctd      : Content Display
-cf       : Create File
-shutdown : Exit the OS
-clear    : Clear the screen
+# MANUEL DES COMMANDES
+
+ls                              : afficher la liste des fichiers
+rm <nom_du_fichier>             : supprimer un fichier
+cf <nom_du_fichier> [<contenu>] : créer un fichier
+ctd <nom_du_fichier>            : afficher le contenu d'un fichier
+shutdown                        : quitter le système d'exploitation
+clear                           : effacer l'écran
