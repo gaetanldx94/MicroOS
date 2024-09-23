@@ -436,15 +436,15 @@ void itoa(int num, char *buffer)
 
 extern "C" void test_message(const char *message, bool success)
 {
-	kernel_printf(message);
 	if (success)
 	{
-		kernel_printf(" [ OK ]\n");
+		kernel_printf("\n[ OK ] ");
 	}
 	else
 	{
-		kernel_printf(" [ FAIL ]\n");
+		kernel_printf("\n[ FAIL ] ");
 	}
+	kernel_printf(message);
 }
 
 struct idt_entry
@@ -537,58 +537,62 @@ void keyboard_install()
 extern "C" void kernelMain(void *multiboot_structure, uint32_t magicnumber)
 {
 	clear_screen();
-	kernel_printf("Initialisation du kernel...\n");
+	kernel_printf("\nInitialisation du kernel...");
 
+	// Initialisation des sous-systèmes
+	kernel_printf("\nInitialisation de la memoire...");
 	init_memory();
+	test_message("Memoire initialisee.", true);
 
+	kernel_printf("\nInstallation de l'IDT...");
 	idt_install();
-	keyboard_install();
-	setup_paging();
-	init_process_manager();
+	test_message("IDT installee.", true);
 
+	kernel_printf("\nInstallation du clavier...");
+	keyboard_install();
+	test_message("Clavier installe.", true);
+
+	kernel_printf("\nMise en place de la pagination...");
+	setup_paging();
+	test_message("Pagination configuree.", true);
+
+	kernel_printf("\nInitialisation du gestionnaire de processus...");
+	init_process_manager();
+	test_message("Gestionnaire de processus initialise.", true);
+
+	// Test d'allocation de mémoire
+	kernel_printf("\nTest d'allocation de memoire...");
 	void *ptr = allocate_memory(64);
 	if (ptr)
 	{
-		kernel_printf("64 octets de memoire alloues avec succes.\n");
+		test_message("64 octets de memoire alloues avec succes.", true);
+		free_memory(ptr);
+		test_message("Memoire liberee avec succes.", true);
 	}
 	else
 	{
-		kernel_printf("Echec de l'allocation de memoire.\n");
+		test_message("Echec de l'allocation de memoire.", false);
 	}
 
-	free_memory(ptr);
-	kernel_printf("Memoire liberee avec succes.\n");
-
-	const char *process_name = "TestProcess";
-	int pid = create_process((uint32_t)process_entry, process_name);
-
-	if (pid != -1)
+	// Test de création et affichage de fichier
+	kernel_printf("\nTest de creation de fichier...");
+	const char *test_message_content = "Ceci est un message de test.";
+	if (create_file(root_directory, "monfichier.txt", test_message_content))
 	{
-		kernel_printf("Processus cree avec PID: ");
-		kernel_printf_int(pid);
+		test_message("Fichier cree avec succes.", true);
 	}
 	else
 	{
-		kernel_printf("Erreur: impossible de creer le processus.\n");
+		test_message("Echec de la creation du fichier.", false);
 	}
 
-	if (create_file(root_directory, "monfichier", "Ceci est un test de fichier."))
-	{
-		kernel_printf("\nFichier cree avec succes.\n");
-	}
-	else
-	{
-		kernel_printf("Échec de la création du fichier.\n");
-	}
-
-	display_file_content(root_directory, "monfichier");
-
-	kernel_printf("\n");
-
+	// Boucle principale
+	kernel_printf("\nDemarrage de la shell...");
+	kernel_printf("\n\n");
 	shell();
 
-	while (1)
+	while (true)
 	{
-		context_switch();
+		context_switch(); // Gestion du multitâche
 	}
 }
