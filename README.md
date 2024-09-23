@@ -39,8 +39,8 @@ MicroOS peut être exécuté sur des machines virtuelles. Voici quelques options
 1. Téléchargez et installez [VirtualBox](https://www.virtualbox.org/).
 2. Créez une nouvelle machine virtuelle avec les spécifications suivantes :
    - **Nom :** MicroOS
-   - **Type :** Linux
-   - **Version :** Other Linux (32-bit)
+   - **Type :** Other
+   - **Version :** Other (32-bit)
    - **Mémoire :** 512 Mo (ou plus)
    - **Disque dur :** 100 Mo (ou plus)
 3. Montez l'image ISO de MicroOS dans la machine virtuelle.
