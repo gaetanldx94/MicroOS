@@ -537,7 +537,7 @@ void keyboard_install()
 extern "C" void kernelMain(void *multiboot_structure, uint32_t magicnumber)
 {
 	clear_screen();
-	kernel_printf("\nInitialisation du kernel...");
+	kernel_printf("Initialisation du kernel...");
 
 	// Initialisation des sous-systèmes
 	kernel_printf("\nInitialisation de la memoire...");
